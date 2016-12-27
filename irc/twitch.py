@@ -4,7 +4,7 @@ custom_cooldowns = {"#adventuresofchat": 60}
 # PBR = None
 my_tags = {}
 
-chatot_dungeon = "#_killermapper_1417986539782"
+chatot_dungeon = "#_chatotdungeon_1481039460679"
 
 twitch_caps = ("twitch.tv/membership", "twitch.tv/tags", "twitch.tv/commands")
 chan_list = ("#twitchplayspokemon", "#adventuresofchat", "#pikalaxalt", "#twitchspeaks", chatot_dungeon, "#pigdevil2010", "#tpp", "#keizaron")
@@ -26,6 +26,9 @@ commands = {
 "dongstortion": BotCommand(on_dongstortion, ["#twitchplayspokemon", "#projectrevotpp"]),
 "archeops": BotCommand(on_archeops, ["#twitchplayspokemon", "#projectrevotpp"]),
 "fuck": BotCommand(on_fuck, ["#twitchplayspokemon", "#projectrevotpp"]),
+"nebby": BotCommand(on_nebby, ["#twitchplayspokemon", "#projectrevotpp"]),
+"bag": BotCommand(on_bag, ["#twitchplayspokemon", "#projectrevotpp"]),
+"addbag": BotCommand(on_addbag, ["#twitchplayspokemon", "#projectrevotpp"]),
 }
 
 _pbr_msgs = ("Team (Red|Blue) won the match!",
@@ -71,7 +74,7 @@ def do_buzzword(message, source, target, tags, connection):
         and target not in ["#twitchplayspokemon", "#projectrevotpp"]:
         return on_highlight(message, source, target, tags, connection)
     M = sed_syntax.match(message)
-    if M and target not in ["#twitchplayspokemon", "#projectrevotpp", "#_killermapper_1417986539782"]:
+    if M and target not in ["#twitchplayspokemon", "#projectrevotpp", chatot_dungeon]:
         return on_sed(M.groups(), source, target, tags, connection)
     return False
 

@@ -7,7 +7,7 @@ from irc import bot, client
 client.ServerConnection.buffer_class.encoding = 'utf8'
 from foaas import Fuck, FuckingResponse
 fuck = Fuck(secure = True)
-from ..utils.commands import RWMC
+from ..utils.commands import RWMC, build_nebby, sample_bag, add_bag, reset_bag
 
 emotelist = []
 emote_regex = re.compile("")
@@ -188,6 +188,19 @@ def on_fuck(message, source, target, tags, connection):
     url = fuck.build_url(action, **params)
     response = FuckingResponse(url).text
     return try_send_message(connection, target, response)
+
+def on_nebby(message, source, target, tags, connection):
+    output = build_nebby()
+    return try_send_message(connection, target, output) or try_send_message(connection, target, 'Pew!')
+
+def on_bag(message, source, target, tags, connection):
+    return try_send_message(connection, target, '\x01ACTION {}\x01'.format(sample_bag()))
+
+def on_addbag(message, source, target, tags, connection):
+    if add_bag(message):
+        return try_send_message(connection, target, 'Message was put in the bag!')
+    else:
+        return try_send_message(connection, target, 'Could not put message in bag!')
 
 load_emotes()
 streamMC = RWMC(filename = "/home/pi/irclogs/twitch/#twitchplayspokemon.log", emote_regex = emote_regex, commands_regex = commands_regex)

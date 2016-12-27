@@ -7,7 +7,7 @@ It is not compatible with any version of Python 2."""
 import platform
 assert platform.system != "Windows", "This script is not compatible with Windows."
 
-from .utils.commands import RWMC
+from .utils.commands import RWMC, build_nebby, add_bag, sample_bag
 from .utils.games import Anagram, Hangman
 from .irc.memesongs import *
 import shlex, discord, re, subprocess, json, urllib3, time, traceback, asyncio, wave, codecs, requests, pickle, logging
@@ -47,36 +47,11 @@ myself = None
 stat_names = ['hp', 'attack', 'defense', 'special-attack', 'special-defense', 'speed']
 stat_names_o = ["HP:   ", "Atk:  ", "Def:  ", "SpAtk:", "SpDef:", "Speed:"]
 
-emotes_succeeded = False
-emotes_tries = 0
-emote_regex = re.compile("")
 cooldown = 10
 last_message = {}
 rate = 0.0001
 
 time_to_hms = lambda num_secs: "%dh%dm%ds" % (num_secs // 3600, (num_secs // 60) % 60, num_secs % 60)
-
-while not emotes_succeeded:
-    try:
-        resp = http.request('GET', 'https://raw.githubusercontent.com/Jiiks/BetterDiscordApp/master/data/emotedata_twitch.json')
-        if resp.status != 200:
-            raise urllib3.exceptions.HTTPError("Failed to load Twitch Global Emotes from BetterDiscord: %d" % resp.status)
-        emotelist = list(json.loads(resp.data.decode()).keys())
-        resp = http.request('GET', 'https://raw.githubusercontent.com/Jiiks/BetterDiscordApp/master/data/emotedata_ffz.json')
-        if resp.status != 200:
-            raise urllib3.exceptions.HTTPError("Failed to load FrankerFaceZ Emotes from BetterDiscord: %d" % resp.status)
-        emotelist += list(json.loads(resp.data.decode()).keys())
-        print("Loaded %d emotes" % len(emotelist))
-        emotes_succeeded = True
-        emote_regex = re.compile(r"\b(" + "|".join(emotelist) + r")\b")
-    except:
-        emotes_tries += 1
-        if emotes_tries >= 10:
-            print("Failed to compile emotes list")
-            print(traceback.format_exc())
-            break
-assert "Kappa" in emotelist, "Something fucked up here."
-assert emote_regex.match("KappaPride"), "Something fucked up here."
 
 def pairs(object):
     if len(object) % 2:
@@ -120,7 +95,10 @@ def init_functions():
     prefix + "archeops": (archeops_cb, False, prefix + "archeops [word1 [word2]] --> Random paragraph from WatchOut4Snakes.com MingLee", True),
     prefix + "song": (song_cb, False, prefix + "song [word] --> Copypasta based on the Donger Song", True),
     prefix + "pikaowner": (pikaowner_cb, True, prefix + "pikaowner --> Restricted use", True),
-    prefix + "shutdown": (song_cb, False, prefix + "shutdown --> Restricted use", True),
+    prefix + "shutdown": (shutdown_cb, False, prefix + "shutdown --> Restricted use", True),
+    prefix + "nebby": (nebby_cb, False, prefix + "nebby --> Random Cosmog noise", True),
+    # prefix + "bag": (bag_cb, False, prefix + "bag --> Cosmog interacts with the bag", True),
+    # prefix + "addbag": (addbag_cb, False, prefix + "addbag [message] --> Add a Cosmog-bag interaction", True),
     }
 
     buzz_dict = {
@@ -201,15 +179,8 @@ def update_cooldown(message, flag):
     last_message[key] = now
     return 1
 
-def caps_except_emote(content):
-    splstuff = content.split()
-    for i, x in enumerate(splstuff):
-        if x not in emotelist:
-            splstuff[i] = x.upper()
-    return " ".join(splstuff)
-
 async def riot_cb(message):
-    riot_msg = caps_except_emote(message.content)
+    riot_msg = message.content
     if len(riot_msg) > len(prefix + "riot "):
         riot_msg = riot_msg[len(prefix + "riot "):]
         if "DANCE" in riot_msg:
@@ -220,7 +191,7 @@ async def riot_cb(message):
         await client.send_message(message.channel, "ヽ༼ຈل͜ຈ༽ﾉ RIOT ヽ༼ຈل͜ຈ༽ﾉ")
 
 async def dongers_cb(message):
-    riot_msg = caps_except_emote(message.content)
+    riot_msg = message.content
     if len(riot_msg) > len(prefix + "dongers "):
         riot_msg = riot_msg[len(prefix + "dongers "):]
         if riot_msg.startswith("DANCE "):
@@ -232,18 +203,19 @@ async def dongers_cb(message):
 async def riot_bw(message):
     if message.content.split()[-1].lower() == "riot":
         await client.send_typing(message.channel)
-        content = caps_except_emote(message.content)
+        content = message.content
         if "DANCE" in content:
             await client.send_message(message.channel, "♫ ┌༼ຈل͜ຈ༽┘ ♪ {} ♪ └༼ຈل͜ຈ༽┐♫ ".format(content))
         else:
             await client.send_message(message.channel, "ヽ༼ຈل͜ຈ༽ﾉ {} ヽ༼ຈل͜ຈ༽ﾉ".format(content))
 
 async def emote_cb(message):
-    await client.send_message(message.channel, np.random.choice(emotelist))
+    await client.send_message(message.channel, str(np.random.choice(message.server.emojis)))
 
 async def spellrand_cb(message):
-    cur_emote = np.random.choice(emotelist)
-    spelled_emote = cur_emote + " " + (" " + cur_emote + " ").join(list(cur_emote.upper())) + " " + cur_emote
+    cur_emote = np.random.choice(message.server.emojis)
+    cur_emote_str = str(cur_emote)
+    spelled_emote = cur_emote_str + " " + (" " + cur_emote_str + " ").join(list(cur_emote.name.upper())) + " " + cur_emote_str
     await client.send_message(message.channel, spelled_emote)
 
 async def rwmc_bw(message):
@@ -253,6 +225,10 @@ async def rwmc_bw(message):
 
 async def prchase_cb(message):
     return await build_rwmc(message, botMC)
+
+async def nebby_cb(message):
+    output = build_nebby()
+    await client.send_message(message.channel, output)
 
 async def build_rwmc(message, chainer):
     chain = chainer.build_chain()
@@ -548,7 +524,7 @@ async def pikahelp_cb(message):
 async def set_game_cb(message, game_name):
     global client_game
     client_game = game_name
-    await client.change_status(game = discord.Game(name = client_game))
+    await client.change_presence(game = discord.Game(name = client_game))
     write_settings()
 
 async def set_prefix_cb(message, new_prefix):
@@ -630,6 +606,15 @@ async def rip_cb(message):
     else:
         await client.send_message(message.channel, "RIP")
 
+async def bag_cb(message):
+    await client.send_message(message.channel, '_{}_'.format(sample_bag()))
+
+async def addbag_cb(message):
+    if add_bag(message.clean_content.split(' ', 1)[1]):
+        await client.send_message(message.channel, 'Message was put in the bag!')
+    else:
+        await client.send_message(message.channel, 'Could not put message in bag!')
+
 async def voice_params_cb(message):
     global tts_params
     tts_params_backup = tts_params.copy()
@@ -690,7 +675,7 @@ async def on_ready():
     #     await client.edit_profile(avatar = F.read())
     bot_channel = discord.utils.get(client.get_all_channels(), id="151257324869255168")
     sent_msg = await client.send_message(bot_channel, "Booting...")
-    await client.change_status(game = discord.Game(name = client_game))
+    await client.change_presence(game = discord.Game(name = client_game))
     if voice_disabled:
         print("Voice comms disabled")
     elif discord.opus.is_loaded():
@@ -706,11 +691,11 @@ async def on_ready():
     try:
         n_attempts = 0
         doot_channel = discord.utils.get(client.get_all_channels(), id="148080089488162817")
-        botMC = RWMC(filename = "/home/pi/irclogs/twitch/#tpp.log", emote_regex = emote_regex)
-        streamMC = RWMC(emote_regex = emote_regex)
+        botMC = RWMC(filename = "/home/pi/irclogs/twitch/#tpp.log")
+        streamMC = RWMC()
         async for x in client.logs_from(doot_channel, limit = 5000):
             streamMC.train_line(x.clean_content)
-        psrMC = RWMC(emote_regex = emote_regex)
+        psrMC = RWMC()
         PSR_server = client.get_server("88066218971385856")
         for channel in PSR_server.channels:
             try:
@@ -773,9 +758,9 @@ async def on_message(message):
             global previous_traceback
             last_traceback = traceback.format_exc()
             if last_traceback != previous_traceback:
-                await client.send_message(message.channel, "Something went wrong on my end BibleThump")
+                await client.send_message(message.channel, "Something went wrong on my end :BibleThump:")
                 try:
-                    await client.send_message(message.channel, "```" + last_traceback + "```")
+                    await client.send_message(message.channel, "```Python\n" + last_traceback + "```")
                 except:
                     tb_filename = "tracebacks/{:d}.txt".format(time.time())
                     open(tb_filename, "w+").write(last_traceback)

@@ -1,12 +1,19 @@
 import numpy as np
-import re, subprocess, os, time
+import re, subprocess, os, time, sys
 from threading import Timer
+from multiprocessing import Array, Value
+import ctypes
 
 PUNCTUATION = (".", "?", "!")
 PUNCTUATION_PROBS = (0.7, 0.25, 0.05)
+default_re = re.compile("$")
+bag_lines = Array(ctypes.c_char_p, 500)
+num_baglines = Value(ctypes.c_ushort, 0)
 
 class RWMC(dict):
-    def __init__(self, filename = None, timeout = 216000, emote_regex = re.compile("$"), min_len = 50000, commands_regex = re.compile("$")):
+    def __init__(self, filename = None, timeout = 216000,
+                 emote_regex = default_re, min_len = 50000,
+                 commands_regex = default_re):
         self.timeout = timeout
         self.filename = filename
         self.emote_regex = emote_regex
@@ -91,3 +98,96 @@ class RWMC(dict):
                 if len(chain) > min_len:
                     return chain
                 construction = ["", ""]
+
+def build_nebby():
+    if np.random.rand() < .01:
+        return '\x01ACTION gets in the bag\x01'
+    phrase = 'Ppew!'
+    markov = np.array([[0.00, 0.00, 1.00, 0.00, 0.00, 0.00],
+                       [0.00, 0.10, 0.90, 0.00, 0.00, 0.00],
+                       [0.00, 0.05, 0.80, 0.15, 0.00, 0.00],
+                       [0.00, 0.00, 0.01, 0.10, 0.89, 0.00],
+                       [0.00, 0.00, 0.00, 0.00, 0.20, 0.80]], dtype = float)
+    output = ''
+    idx = 0
+    while idx < len(phrase):
+        output += phrase[idx]
+        idx = np.random.choice(len(phrase) + 1, p = markov[idx])
+    return output
+
+def sample_bag():
+    load_bag()
+    with num_baglines, bag_lines:
+        cur_bag_idx = np.random.randint(num_baglines.value)
+        bag_action = bag_lines[cur_bag_idx].decode()
+    return bag_action
+
+def add_bag(bag_line):
+    if len(bag_line) > 100:
+        sys.stdout.write('message too long\n')
+        return False
+    sys.stdout.write('passed size check\n')
+    if re.search(r'(https?://)?(\w+?\.)?\w+?\.\w+?(/\S+)?', bag_line):
+        sys.stdout.write('message has a url\n')
+        return False
+    sys.stdout.write('not a url\n')
+    with num_baglines, bag_lines:
+        if num_baglines.value >= 500:
+            sys.stdout.write('bag is full\n')
+            return False
+        if bag_line in bag_lines:
+            sys.stdout.write('line already exists\n')
+            return False
+        try:
+            bag_lines[num_baglines.value] = bag_line.encode()
+            num_baglines.value += 1
+            sys.stdout.write('added line to bag\n')
+        except:
+            sys.stdout.write('unknown error\n')
+            return False
+    try:
+        save_bag()
+        sys.stdout.write('saved bag\n')
+    except:
+        with num_baglines, bag_lines:
+            sys.stdout.write('failed to save bag, reverting action\n')
+            num_baglines.value -= 1
+            bag_lines[num_baglines.value] = None
+            return False
+    return True
+
+def save_bag():
+    with num_baglines, bag_lines:
+        with open('data/nebby.txt', 'w') as O:
+            for idx in range(num_baglines.value):
+                O.write(baglines[idx])
+                O.write('\n')
+
+def load_bag():
+    with num_baglines, bag_lines:
+        if num_baglines.value == 0:
+            with open('data/nebby.txt', 'r') as nebbyFile:
+                for line in nebbyFile.readlines():
+                    tmp = line.strip().encode()
+                    bag_lines[num_baglines.value] = tmp
+                    num_baglines.value += 1
+
+def reset_bag():
+    with num_baglines, bag_lines:
+        tmp = ['refuses to get in the bag.',
+               'stares at the bag mischievously.',
+               'happily jumps in the bag.',
+               'sniffs at the bag.',
+               'pokes at the bag playfully.',
+               'runs the other way!',
+               'gets distracted by something shiny.']
+        bag_lines[:len(tmp)] = tmp
+        num_baglines.value = len(tmp)
+    save_bag()
+
+try:
+    load_bag()
+    with num_baglines:
+        assert num_baglines.value > 0
+except:
+    reset_bag()

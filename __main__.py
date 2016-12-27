@@ -1,5 +1,6 @@
 from .discord import discord, client
 from .irc import twitch, freenode
+# from .showdown import main as showdown
 import sys, asyncio, traceback, time, logging
 from websockets.exceptions import ConnectionClosed
 from multiprocessing import Process, active_children, ProcessError
@@ -51,12 +52,13 @@ Freenode.connection.partner = Twitch.connection
 processes = []
 processes.append(Process(target = Twitch.start, name = 'Twitch'))
 processes.append(Process(target = Freenode.start, name = 'Freenode'))
+# processes.append(Process(target = showdown, name = 'Showdown'))
 
 for process in processes:
     process.start()
     print('Started process ' + process.name)
 
-asyncio.ensure_future(discord.client.run(token))
+asyncio.ensure_future(client.run(token))
 
 while sum([process.is_alive() for process in processes]) == 2:
     time.sleep(60)

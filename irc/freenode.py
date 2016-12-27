@@ -144,6 +144,9 @@ commands = {
 "dongstortion": BotCommand(on_dongstortion, ["#twitchplayspokemon", "#poketext"]),
 "archeops": BotCommand(on_archeops, ["#twitchplayspokemon", "#poketext"]),
 "fuck": BotCommand(on_fuck, ["#twitchplayspokemon", "#poketext", "#tppleague"]),
+"nebby": BotCommand(on_nebby, ["#twitchplayspokemon", "#poketext"]),
+"bag": BotCommand(on_bag, ["#twitchplayspokemon", "#poketext"]),
+"addbag": BotCommand(on_addbag, ["#twitchplayspokemon", "#poketext"]),
 }
 
 cooldown = {}
